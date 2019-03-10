@@ -6,7 +6,7 @@ double orientation [3];
 double range_min;
 double range_max;
 std::vector<float> range;
-int range_size = 640;
+int range_size = 0;
 const double clearance = 0.6;  // obstacle proximity to consider as a collision
 const double step = 0.1;
 const double tolerance_pos = step/2; // 2 points are considered touching if within tolerance
@@ -18,6 +18,10 @@ bool initialized = 0;
 void init() {
   init_pose[0] = orientation[0];
   init_pose[1] = orientation[1];
+  while (range_size == 0) {
+    ros::spinOnce();
+  }
+  initialized = 1;
 }
 
 geometry_msgs::Twist move_cmd(double forward_move, double turn_move) {
@@ -28,7 +32,11 @@ geometry_msgs::Twist move_cmd(double forward_move, double turn_move) {
 }
 
 bool detectCollision() {
-  ROS_INFO("range is: %i", range.size());
+  double frontScan = range.at(range_size/2);
+  ROS_INFO("frontScan: %f", frontScan);
+  if (frontScan <= clearance) {
+    return 1;
+  }
   return 0;
 }
 
@@ -46,6 +54,7 @@ geometry_msgs::Twist decide_move() {
 }
 
 geometry_msgs::Twist MTG() {
+    ROS_INFO("MTG");
    // detects collision to switch modes
     // if not aligned with goal, turn to goal
     // if aligned with goal, move to goal
@@ -70,6 +79,7 @@ geometry_msgs::Twist MTG() {
 }
 
 geometry_msgs::Twist BF() {
+    ROS_INFO("BF");
     // Detects if on M line to switch mode
     bool isOnMLine = 0;
     if (isOnMLine) {
@@ -129,19 +139,16 @@ int main(int argc, char **argv)
   ros::Subscriber subPos = n.subscribe<nav_msgs::Odometry>("odom", 1000, posCallback);
 
   init();
-
   while (ros::ok())
   {
     // receive data
    // update information
     // decide on MTG or BF
     // do MTG or BF
-    ros::spinOnce();
     geometry_msgs::Twist cmd;
     cmd = decide_move();
     command_pub.publish(cmd);
-
-
+    ros::spinOnce();
 
     loop_rate.sleep();
   }
