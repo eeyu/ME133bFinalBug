@@ -1,26 +1,25 @@
-#include "bug2_node.hh"
+#include "ros/ros.h"
+#include "std_msgs/String.h"
+#include "sensor_msgs/LaserScan.h"
+#include “nav_msgs/Odometry.h”
+#include "geometry_msgs/Twist.h"
+#include <std_msgs/Float64.h>
 
-double  init_pose[2];
-double  goal_pose[2] = {-5, -5};
-double orientation [3];
-double range_min;
-double range_max;
-std::vector<float> range;
-int range_size = 640;
-const double clearance = 0.6;  // obstacle proximity to consider as a collision
-const double step = 0.1;
-const double tolerance_pos = step/2; // 2 points are considered touching if within tolerance
-const double tolerance_ang = 0.05; 
+
+float64  init_pose[3];
+float64  goal_pose[2] = {3, 3};
+float64 orientation [3];
+float32 range_min;
+float32 range_max;
+float32[] range;
+const float32 clearance = 0.6;  // obstacle proximity to consider as a collision
+const float32 step = 0.1;
+const float32 tolerance_pos = step/2; // 2 points are considered touching if within tolerance
+const float32 tolerance_ang = 0.05; 
 
 bool mode = 0; // 0 = MTG, 1 = BF
 
-void init() {
-  init_pose[0] = orientation[0];
-  init_pose[1] = orientation[1];
-}
-
 geometry_msgs::Twist move_cmd(double forward_move, double turn_move) {
-    geometry_msgs::Twist cmd;
     cmd.linear.x = forward_move;
     cmd.angular.z = turn_move;
     return cmd;
@@ -49,11 +48,8 @@ geometry_msgs::Twist MTG() {
     // if aligned with goal, move to goal
 
     // check if aligned with goal
-    double MAngle = atan2(goal_pose[1] - init_pose[1], goal_pose[0] - init_pose[0]);
-    double currAngle = orientation[2];
-        ROS_INFO("Current Angle: %f", currAngle);
-    ROS_INFO("M Angle: %f", MAngle);
-
+    float64 MAngle = tan2(goal_pose[1] - init_pose[1], goal_pose[0] - init_pose[0]);
+    float64 currAngle = orientation[2];
     bool isAligned = (abs(currAngle - MAngle) < tolerance_ang); // TODO
 
     bool isCollision = detectCollision();
@@ -71,10 +67,7 @@ geometry_msgs::Twist MTG() {
 
 geometry_msgs::Twist BF() {
     // Detects if on M line to switch mode
-    bool isOnMLine = 0;
     if (isOnMLine) {
-      mode = 0;
-      return move_cmd(0,0);
     }
     // Else, boundary follow.
     else {
@@ -82,30 +75,32 @@ geometry_msgs::Twist BF() {
       // Goal reached.
       // M line encountered without obstacle.
     }
+    bool isOnMLine = 0; // TODO
+    if (isOnMLine) {
+        mode = 0;
+        return move_cmd(0,0);
+    }
     return move_cmd(0,0);
 }
 
 void scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
-  //ROS_INFO("I heard scan: [%f]", msg->ranges[0]);
+  ROS_INFO("I heard scan: [%f]", msg->ranges[0]);
   
   // Update range data.
-  sensor_msgs::LaserScan scan = *msg;
+  sensor_msgs::LaserScan scan = msg;
   range = scan.ranges;
   range_min = scan.range_min;
   range_max = scan.range_max;
 }
 
-void posCallback(const nav_msgs::Odometry::ConstPtr& odom)
+void posCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
+  ROS_INFO("I heard pose: [%f]", msg->ranges[0]);
+
   // Update orientation (x, y, theta).
- //nav_msgs::Odometry odom = msg;
-  orientation[0] = odom->pose.pose.position.x;
-  orientation[1] = odom->pose.pose.position.y;
-  orientation[2] = odom->twist.twist.angular.z;
-  double q0 = odom->twist.twist.angular.w;
-  double q3 = odom->twist.twist.angular.z;
-  ROS_INFO("I measure the aangle as: %f", orientation[2]);
+ nav_msgs::Odometry odom = msg;
+  orientation = {odom.pose.pose.position.x, odom.pose.pose.position.y, odom.twist.twist.angular.z};
 }
 
 int main(int argc, char **argv)
@@ -122,8 +117,6 @@ int main(int argc, char **argv)
   ros::Subscriber subLaser = n.subscribe<sensor_msgs::LaserScan>("scan", 1000, scanCallback);
   ros::Subscriber subPos = n.subscribe<nav_msgs::Odometry>("odom", 1000, posCallback);
 
-  init();
-
   while (ros::ok())
   {
     // receive data
@@ -131,7 +124,7 @@ int main(int argc, char **argv)
     // decide on MTG or BF
     // do MTG or BF
 
-    geometry_msgs::Twist cmd;
+    geometry_msgs/Twist cmd;
     cmd = decide_move();
     command_pub.publish(cmd);
 
