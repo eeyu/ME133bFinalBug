@@ -7,7 +7,7 @@
  */
 void scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
-  ROS_INFO("I heard: [%f]", msg->ranges[0]);
+  ROS_INFO("I heard: [%f] ", msg->ranges[0]);
 }
 
 int main(int argc, char **argv)
