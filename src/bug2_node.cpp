@@ -1,5 +1,6 @@
 #include "bug2_node.hh"
 
+#define DEBUG 1
 double  init_pose[2];
 double  goal_pose[2] = {-5, -5};
 double orientation [3];
@@ -54,7 +55,9 @@ geometry_msgs::Twist decide_move() {
 }
 
 geometry_msgs::Twist MTG() {
+#ifdef DEBUG
     ROS_INFO("MTG");
+#endif 
    // detects collision to switch modes
     // if not aligned with goal, turn to goal
     // if aligned with goal, move to goal
@@ -79,7 +82,9 @@ geometry_msgs::Twist MTG() {
 }
 
 geometry_msgs::Twist BF() {
+#ifdef DEBUG
     ROS_INFO("BF");
+#endif 
     // Detects if on M line to switch mode
     bool isOnMLine = 0;
     if (isOnMLine) {
