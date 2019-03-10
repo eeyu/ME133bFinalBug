@@ -1,7 +1,7 @@
 #include "bug2_node.hh"
 
 double  init_pose[2];
-double  goal_pose[2] = {-5, -5};
+double  goal_pose[2] = {6, -5};
 double orientation [3];
 double range_min;
 double range_max;
@@ -102,9 +102,11 @@ void posCallback(const nav_msgs::Odometry::ConstPtr& odom)
  //nav_msgs::Odometry odom = msg;
   orientation[0] = odom->pose.pose.position.x;
   orientation[1] = odom->pose.pose.position.y;
-  orientation[2] = odom->twist.twist.angular.z;
-  double q0 = odom->twist.twist.angular.w;
-  double q3 = odom->twist.twist.angular.z;
+  //orientation[2] = odom->twist.twist.angular.z;
+  double q0 = odom->pose.pose.orientation.w;
+  double q3 = odom->pose.pose.orientation.z;
+  double zangle = atan2((2*q0*q3),(1-2*q3*q3));
+  orientation[2] = zangle;
   ROS_INFO("I measure the aangle as: %f", orientation[2]);
 }
 
