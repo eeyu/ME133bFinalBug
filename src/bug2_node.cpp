@@ -1,7 +1,7 @@
 #include "bug2_node.hh"
 
 double  init_pose[2];
-double  goal_pose[2] = {6, -5};
+double  goal_pose[2] = {-5, -5};
 double orientation [3];
 double range_min;
 double range_max;
@@ -13,6 +13,7 @@ const double tolerance_pos = step/2; // 2 points are considered touching if with
 const double tolerance_ang = 0.05; 
 
 bool mode = 0; // 0 = MTG, 1 = BF
+bool initialized = 0;
 
 void init() {
   init_pose[0] = orientation[0];
@@ -27,6 +28,7 @@ geometry_msgs::Twist move_cmd(double forward_move, double turn_move) {
 }
 
 bool detectCollision() {
+  ROS_INFO("range is: %i", range.size());
   return 0;
 }
 
@@ -51,10 +53,8 @@ geometry_msgs::Twist MTG() {
     // check if aligned with goal
     double MAngle = atan2(goal_pose[1] - init_pose[1], goal_pose[0] - init_pose[0]);
     double currAngle = orientation[2];
-        ROS_INFO("Current Angle: %f", currAngle);
-    ROS_INFO("M Angle: %f", MAngle);
 
-    bool isAligned = (abs(currAngle - MAngle) < tolerance_ang); // TODO
+    bool isAligned = (fabs(currAngle -  MAngle) < tolerance_ang); // TODO
 
     bool isCollision = detectCollision();
     if (isCollision) {
@@ -65,7 +65,7 @@ geometry_msgs::Twist MTG() {
     if (isAligned) {
         return move_cmd(step, 0);
     } else {
-        return move_cmd(0,currAngle - MAngle); // TODO Change angle appropriately
+        return move_cmd(0,MAngle - currAngle); 
     }
 }
 
@@ -82,18 +82,23 @@ geometry_msgs::Twist BF() {
       // Goal reached.
       // M line encountered without obstacle.
     }
-    return move_cmd(0,0);
+    return move_cmd(0,1);
 }
 
-void scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
+void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
 {
   //ROS_INFO("I heard scan: [%f]", msg->ranges[0]);
-  
-  // Update range data.
-  sensor_msgs::LaserScan scan = *msg;
-  range = scan.ranges;
-  range_min = scan.range_min;
-  range_max = scan.range_max;
+  if (!initialized) {
+    range = scan->ranges;
+    range_size = range.size();
+    range_min = scan->range_min;
+    range_max = scan->range_max;
+  } else {
+    // Update range data.
+    range = scan->ranges;
+  }
+
+
 }
 
 void posCallback(const nav_msgs::Odometry::ConstPtr& odom)
@@ -107,7 +112,6 @@ void posCallback(const nav_msgs::Odometry::ConstPtr& odom)
   double q3 = odom->pose.pose.orientation.z;
   double zangle = atan2((2*q0*q3),(1-2*q3*q3));
   orientation[2] = zangle;
-  ROS_INFO("I measure the aangle as: %f", orientation[2]);
 }
 
 int main(int argc, char **argv)
@@ -132,12 +136,12 @@ int main(int argc, char **argv)
    // update information
     // decide on MTG or BF
     // do MTG or BF
-
+    ros::spinOnce();
     geometry_msgs::Twist cmd;
     cmd = decide_move();
     command_pub.publish(cmd);
 
-    ros::spinOnce();
+
 
     loop_rate.sleep();
   }
