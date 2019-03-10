@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   sensor_msgs
   message_runtime
+  geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -205,6 +206,10 @@ add_executable(talker src/talker.cpp)
 target_link_libraries(talker ${catkin_LIBRARIES})
 add_dependencies(talker beginner_tutorials_generate_messages_cpp)
 
-add_executable(listener src/listener.cpp)
-target_link_libraries(listener ${catkin_LIBRARIES})
-add_dependencies(listener beginner_tutorials_generate_messages_cpp)
+add_executable(bug2_node src/bug2_node.cpp)
+target_link_libraries(bug2_node ${catkin_LIBRARIES})
+add_dependencies(bug2_node beginner_tutorials_generate_messages_cpp)
+
+add_executable(pubsub src/pubsub.cpp)
+target_link_libraries(pubsub ${catkin_LIBRARIES})
+add_dependencies(pubsub beginner_tutorials_generate_messages_cpp)
