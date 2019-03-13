@@ -126,8 +126,8 @@ geometry_msgs::Twist BF() {
     isAtStart = true;
   }
   // Determines if the robot has "begun" BF
-  // The robot begins on the M line and ends on the M line. must differentiate M-line contact
-  // between begin and end
+  // The robot begins on the M line and ends on the M line. 
+  // Must differentiate M-line contact between begin and end.
   if (!BF_began && !isAtStart)
     BF_began = true;
 
@@ -200,6 +200,7 @@ int main(int argc, char **argv)
   ros::Subscriber subLaser = n.subscribe<sensor_msgs::LaserScan>("scan", 1000, scanCallback);
   ros::Subscriber subPos = n.subscribe<nav_msgs::Odometry>("odom", 1000, posCallback);
 
+  /*
   //testing
   #ifdef DEBUG
   ROS_INFO("Testing vectors");
@@ -224,7 +225,8 @@ int main(int argc, char **argv)
   ROS_INFO("proj: (%f, %f)", proj.x, proj.y);
   pose2D distVec = d2.vec_sub(proj);
   ROS_INFO("M-Line offset: %f", distVec.vec_norm());
-#endif
+  #endif
+  */
 
   init();
   while (ros::ok())
