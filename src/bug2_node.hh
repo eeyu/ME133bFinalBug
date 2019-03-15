@@ -12,11 +12,15 @@ geometry_msgs::Twist move_cmd(double forward_move, double turn_move);
 
 bool detectCollision();
 
+geometry_msgs::Twist align();
+
 geometry_msgs::Twist decide_move();
 
 geometry_msgs::Twist MTG();
 
 geometry_msgs::Twist BF();
+
+geometry_msgs::Twist BF_step();
 
 void scanCallback(const sensor_msgs::LaserScan::ConstPtr& msg);
 
