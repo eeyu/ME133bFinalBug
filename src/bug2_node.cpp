@@ -16,6 +16,8 @@ double startAngle;
 double minRange, minRangeAngle; // Range and angle to closest object.
 double tangentAngle; // Angle that is parallel to tangent.
 int c = 0;
+ros::Time startTime, endTime;
+int SCAN_TIME = 2.5; // Seconds to scan.
 
 pose2D curr_pose;
 double range_min;
@@ -27,7 +29,7 @@ const double clearance = 0.8;  // obstacle proximity to consider as a collision
 const double step = 0.5;
 const double tolerance_pos = 0.1; // 2 points are considered touching if within tolerance
 const double tolerance_ang = 0.02;
-const double SCAN_VELOCITY = -0.4;
+const double SCAN_VELOCITY = -0.8;
 
 bool mode = 0; // 0 = MTG, 1 = BF
 bool initialized = 0;
@@ -219,30 +221,20 @@ geometry_msgs::Twist BF_step() {
     ROS_INFO("MIN RANGE ANGLE: %f", minRangeAngle);
     ROS_INFO("CURRENT ANGLE: %f", curr_pose.ang);
 
+
     // Perturb from start angle and change state to 2.
     if (BF_searchState == 1) {
       BF_searchState = 2;
+
+      startTime = ros::Time::now();
+
       return move_cmd(0, SCAN_VELOCITY);
     }
     else {
-      // Advance state once robot has turned almost 2 * PI.
+      endTime = ros::Time::now();
 
-      // Stop at end angle.
-      // Account for angle being -PI to PI if necessary.
-      if (startAngle > PI - 2 * tolerance_ang) {
-        if (curr_pose.ang < startAngle + 2 * tolerance_ang - 2 * PI && 
-            curr_pose.ang > startAngle) {
-
-          BF_searchState = 3;
-        }
-      }
-      else {
-        if (curr_pose.ang < startAngle + 2 * tolerance_ang &&
-            curr_pose.ang > startAngle) {
-
-          BF_searchState = 3;
-        }
-      }
+      if (endTime.sec - startTime.sec > SCAN_TIME)
+        BF_searchState = 3;
 
       // Otherwise keep turning.
       return move_cmd(0, SCAN_VELOCITY);
@@ -275,7 +267,7 @@ geometry_msgs::Twist BF_step() {
         ROS_INFO("--MOVED--");
 
         // Move forward.
-        return move_cmd(2 * step, 0);
+        return move_cmd(3 * step, 0);
       }
     }
   }
