@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(ME133bFinalBug)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+ add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -202,14 +202,11 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_executable(talker src/talker.cpp)
-target_link_libraries(talker ${catkin_LIBRARIES})
-add_dependencies(talker beginner_tutorials_generate_messages_cpp)
-
 add_executable(bug2_node src/bug2_node.cpp)
 target_link_libraries(bug2_node ${catkin_LIBRARIES})
 add_dependencies(bug2_node beginner_tutorials_generate_messages_cpp)
 
-add_executable(pubsub src/pubsub.cpp)
-target_link_libraries(pubsub ${catkin_LIBRARIES})
-add_dependencies(pubsub beginner_tutorials_generate_messages_cpp)
+add_executable(tangentbug_node src/tangentbug_node.cpp)
+target_link_libraries(tangentbug_node ${catkin_LIBRARIES})
+add_dependencies(tangentbug_node beginner_tutorials_generate_messages_cpp)
+
