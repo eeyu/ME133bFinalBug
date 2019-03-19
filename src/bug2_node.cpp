@@ -2,11 +2,11 @@
 
 // #define DEBUG 1
 #define PI 3.141593
-
+#define GOAL_TYPE 3
 #define DEBUG
 
 pose2D init_pose;
-pose2D goal_pose(3, 3, 0);
+pose2D goal_pose;
 pose2D curr_pose;
 
 // MF variables
@@ -24,6 +24,10 @@ double tangentAngleOffset;
 int c = 0;
 ros::Time BF_searchStartTime;
 int SCAN_TIME = 2.5; // Seconds to scan.
+double BF_temp_X; // Quickly hashed debug to solve MLine blocked issue. Used to check if 
+				  // position has changed
+bool MTGpossible = true;
+
 
 
 // Laser scanner parameters
@@ -51,21 +55,27 @@ bool initialized = 0;
 
 geometry_msgs::Twist MTG() {
 #ifdef DEBUG
-    ROS_INFO("MTG");
+  //  ROS_INFO("MTG");
 #endif
   /*
    * Moves to goal until obstacle encountered or goal reached.
    *
    */
-ROS_INFO("M Angle: %f", MAngle);
+//ROS_INFO("M Angle: %f", MAngle);
   bool isCollision = detectCollision(); // Detect collision.
 
   // Robot encounters an object.
   // Change mode to BF and save initial collision point.
   if (isCollision) {
+  	ROS_INFO("BUMP");
+  	  ROS_INFO(" ");
+  ROS_INFO("## ## ## ## ## ## BF ## ## ## ## ## ##");
     mode = 1;
+   	BF_temp_X = curr_pose.x;
     BF_init_pose.set(curr_pose);
     BF_began = false;
+    MTGpossible = true;
+
 
     return move_cmd(0,0); // No move.
   }
@@ -80,7 +90,7 @@ ROS_INFO("M Angle: %f", MAngle);
 
 geometry_msgs::Twist BF() {
 #ifdef DEBUG
-    ROS_INFO("BF");
+  //  ROS_INFO("BF");
 #endif 
   // Follows boundary until boundary circumnavigated or M line found.
   if ((curr_pose.vec_distance(BF_init_pose) > tolerance_pos) && !BF_began) {
@@ -93,39 +103,42 @@ geometry_msgs::Twist BF() {
     // Check if robot at start.
     bool isAtStart = curr_pose.vec_distance(BF_init_pose) <= tolerance_pos;
     // Check if MTG is possible. Initialize as true.
-    bool MTGpossible = true;
     
     // If robot returns to initial collision point after starting BF,
     // exit with failure.
+    if (fabs(BF_temp_X - curr_pose.x) < 2*tolerance_pos)
+    	MTGpossible = true;
+    BF_temp_X = curr_pose.x;
     if (isAtStart) {
       ROS_INFO("FAILURE: AT START.");
       return move_cmd(0, 0);
     }
-
     // If robot finds M line without an obstacle,
     // switch to MTG if possible.
     else if (detectOnMline() && MTGpossible) {
+    	ROS_INFO("ON MLINE");
+    	//ROS_INFO("ON M-Line. Checking if blocked");
       geometry_msgs::Twist moveAlign = align();
       // Turn to face M line.
       if (moveAlign.angular.z > 0) {
         return moveAlign;
       }
-      // Already facing M line.
-      else {
-        // If M line is blocked, continue BF.
       
-        if (detectCollision()) {
-          ROS_INFO("M LINE BLOCKED.");
-          MTGpossible = false;
-          fail_ang_step *= -1;
-          return move_cmd(0, fail_ang_step);
-        }
-        // Else, switch to MTG.
-        else {
-          mode = 0;
-          return move_cmd(0, 0);
-        }
+      // If M line is blocked, continue BF.
+      if (detectCollision()) {
+        ROS_INFO("M-LINE BLOCKED. Continuing.");
+      //  MTGpossible = false;
+      //  fail_ang_step *= -1;
+        //return move_cmd(0, fail_ang_step);
       }
+      // Else, switch to MTG.
+      else {
+      	ROS_INFO(" ");
+  ROS_INFO("<><><><><><><><> MTG <><><><><><><><>");
+        mode = 0;
+        return move_cmd(0, 0);
+      }
+      
     }
   }
   return BF_step();
@@ -155,14 +168,14 @@ geometry_msgs::Twist BF_step() {
 
   // 2: Move tangent to object.
   else {
-    ROS_INFO("MIN RANGE: %f", minObsRange);
-    ROS_INFO("TANGENT ANGLE OFFSET: %f", tangentAngleOffset);
-    ROS_INFO("CURRENT OFFSET: %f", (curr_pose.ang - BF_startAngle));
+  //  ROS_INFO("MIN RANGE: %f", minObsRange);
+   // ROS_INFO("TANGENT ANGLE OFFSET: %f", tangentAngleOffset);
+   // ROS_INFO("CURRENT OFFSET: %f", (curr_pose.ang - BF_startAngle));
     double currAngleOffset = (curr_pose.ang - BF_startAngle);
     if (currAngleOffset > PI) currAngleOffset -= 2*PI;
     if (currAngleOffset < -PI) currAngleOffset += 2*PI;
     double error =  tangentAngleOffset - currAngleOffset;
-    ROS_INFO("ERROR: %f", error);
+  //  ROS_INFO("ERROR: %f", error);
 
     // Robot not aligned with tangent angle.
     if (fabs(error) >= tolerance_ang)
@@ -173,7 +186,7 @@ geometry_msgs::Twist BF_step() {
       BF_searchState = 0;
       BF_moveState = 0;
 
-      ROS_INFO("--MOVED--");
+    //  ROS_INFO("--MOVED--");
 
       // Move forward.
       return move_cmd(3 * step, 0);
@@ -264,9 +277,9 @@ void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan)
     angle_max = scan->angle_max;
     angle_min = scan->angle_min;
     angle_incr = scan->angle_increment;
-      ROS_INFO("m: %f", angle_min);
+  //    ROS_INFO("m: %f", angle_min);
 
-  ROS_INFO("M: %f", angle_max);
+ // ROS_INFO("M: %f", angle_max);
 
 
   } else {
@@ -283,7 +296,7 @@ void posCallback(const nav_msgs::Odometry::ConstPtr& odom)
   double zangle = atan2((2*q0*q3),(1-2*q3*q3));
 
   curr_pose.set(odom->pose.pose.position.x, odom->pose.pose.position.y, zangle);
-    ROS_INFO("curr: (%f, %f, %f)", curr_pose.x, curr_pose.y, curr_pose.ang);
+    //ROS_INFO("curr: (%f, %f, %f)", curr_pose.x, curr_pose.y, curr_pose.ang);
 
 }
 
@@ -292,12 +305,27 @@ void init() {
   while (range_size == 0) {
     ros::spinOnce();
   }
+
+  if (GOAL_TYPE == 1)
+    goal_pose.set(3,3,0);
+  else if (GOAL_TYPE == 2) 
+    goal_pose.set(3, -3, 0);
+  else if (GOAL_TYPE == 3) 
+    goal_pose.set(-3, -3, 0);
+  else if (GOAL_TYPE == 4) 
+    goal_pose.set(-2, 2, 0);
+  else
+    goal_pose.set(0, 0, 0);
   init_pose.set(curr_pose);
   initialized = 1;
   MAngle = atan2(goal_pose.y - init_pose.y, goal_pose.x - init_pose.x);
+      ROS_INFO("Goal: (%f, %f)", goal_pose.x, goal_pose.y);
 
-      ROS_INFO("Mangle %f", MAngle);
-    ROS_INFO("init: (%f, %f)", init_pose.x, init_pose.y);
+    ROS_INFO("<><><><><><><><> MTG <><><><><><><><>");
+
+ // ROS_INFO("Mangle %f", MAngle);
+  //ROS_INFO("init: (%f, %f)", init_pose.x, init_pose.y);
+
 }
 
 geometry_msgs::Twist move_cmd(double forward_move, double turn_move) {
@@ -318,7 +346,7 @@ double scan_center_avg(int num) {
 bool detectCollision() {
   double frontScan = range.at(range_size / 2);
 //  minObsRange = *std::min_element(range.begin(), range.end());
-  ROS_INFO("frontScan: %f", frontScan);
+ // ROS_INFO("frontScan: %f", frontScan);
   if (frontScan <= clearance) {
     return 1;
   }
@@ -339,12 +367,12 @@ bool detectOnMline() {
 //  ROS_INFO("curr: (%f, %f)", curr_pose.x, curr_pose.y);
 //  ROS_INFO("goal: (%f, %f)", goal_pose.x, goal_pose.y);
 //  ROS_INFO("init: (%f, %f)", init_pose.x, init_pose.y);
-  ROS_INFO("M-Line offset: %f", rej.vec_norm());
+ // ROS_INFO("M-Line offset: %f", rej.vec_norm());
   #endif
   
   if (rej.vec_norm() < tolerance_pos) {
     #ifdef DEBUG
-    ROS_INFO("ON MLINE");
+ //  ROS_INFO("ON MLINE");
     #endif
 
     return 1;
@@ -368,6 +396,7 @@ geometry_msgs::Twist decide_move() {
 
     if (curr_pose.vec_distance(goal_pose) <= tolerance_pos) {
 return move_cmd(0, 10);
+ROS_INFO("SUCCESS");
 //      ros::shutdown();
     }
     if (mode == 0) {

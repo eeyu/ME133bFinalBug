@@ -65,10 +65,10 @@ geometry_msgs::Twist decide_move() {
 
 //
 geometry_msgs::Twist SCAN() {
-  ROS_INFO("(((((((((( SCAN ))))))))))");
+ // ROS_INFO("(((((((((( SCAN ))))))))))");
 
   if (!isAlignedGoal()) {
-    ROS_INFO("aligning");
+ //   ROS_INFO("aligning");
     return alignToGoal();
   }
 
@@ -95,7 +95,7 @@ geometry_msgs::Twist SCAN() {
       cand_pose.setAngle(1);
     else
       cand_pose.setAngle(0);
-    ROS_INFO("MLINE OBSTACLE STATE: %f", cand_pose.ang);
+  //  ROS_INFO("MLINE OBSTACLE STATE: %f", cand_pose.ang);
     
     inter_goal_cands.push_back(cand_pose);
     for (pose2D posei : inter_goal_cands) {
@@ -130,9 +130,9 @@ geometry_msgs::Twist SCAN() {
    */
 geometry_msgs::Twist MTG() {
 #ifdef DEBUG
-    ROS_INFO("<><><><><><><><> MTG <><><><><><><><>");
-    printPose(goal_poses.back(), "Current Goal");
-    ROS_INFO("Mangle %f", MAngle);
+ //   ROS_INFO("<><><><><><><><> MTG <><><><><><><><>");
+  //  printPose(goal_poses.back(), "Current Goal");
+   // ROS_INFO("Mangle %f", MAngle);
 #endif
 
   // Checks if a goal has been reached
@@ -146,7 +146,7 @@ geometry_msgs::Twist MTG() {
     goal_poses.pop_back();
     return move_cmd(0,0);
   }
-/*
+
 
   // Checks if robot encountered an object. Change mode to BF   
   if (detectCollision()) {
@@ -155,7 +155,7 @@ geometry_msgs::Twist MTG() {
     goal_poses.pop_back();
     return move_cmd(0,0); // No move.
   }
-  */
+  
 
   // Align and move robot along M line.
   if (!isAlignedGoal()) 
@@ -169,8 +169,8 @@ geometry_msgs::Twist MTG() {
 
 geometry_msgs::Twist BF() {
 #ifdef DEBUG
-    ROS_INFO("## ## ## ## ## ## BF ## ## ## ## ## ##");
-    ROS_INFO("Min Dist to Goal: %f", BF_minRadius);
+  //  ROS_INFO("## ## ## ## ## ## BF ## ## ## ## ## ##");
+   // ROS_INFO("Min Dist to Goal: %f", BF_minRadius);
 #endif 
   // Follows boundary until boundary circumnavigated or M line found.
   if (!isAtPosition(BF_init_pose) && !BF_began)
@@ -187,21 +187,21 @@ geometry_msgs::Twist BF() {
     // Robot has traced to a position closer to goal
     double dist2goal = distanceToGoal(curr_pose, 0);
     if (dist2goal < BF_minRadius) {
-      ROS_INFO("Checking M Line Blocked");
+      ROS_INFO("Distance Reduced. Checking if M Line Blocked");
       // Switch to SCAN if goal is not blocked
       if (isFinalGoalBlocked()) {
         ROS_INFO("BLOCKED.");
         BF_minRadius = dist2goal;
       } else {
         ROS_INFO("NOT BLOCKED");
-        mode = -1;
+        switchToSCAN();
         return move_cmd(0, 0);
       }
     }
   }
 
   // Otherwise, does BF
-  ROS_INFO("Stepping");
+ // ROS_INFO("Stepping");
   return BF_step();
 }
 
@@ -214,11 +214,11 @@ geometry_msgs::Twist BF_step() {
   double currAngleOffset = limitAngle(curr_pose.ang - BF_startAngle);
   double error =  limitAngle(tangentAngleOffset - currAngleOffset);
 
-  ROS_INFO("Error: %f", error);
+  //ROS_INFO("Error: %f", error);
   // Align Robot with tangent angle
   if (fabs(error) >= tolerance_ang) {
-    ROS_INFO ("Aligning");
-    ROS_INFO ("MAngle: %f", MAngle);
+  //  ROS_INFO ("Aligning");
+   // ROS_INFO ("MAngle: %f", MAngle);
     return move_cmd(0, 2*error);
   }
     
@@ -226,7 +226,7 @@ geometry_msgs::Twist BF_step() {
   else {
     // Reset states.
     BF_searchState = 0;
-    ROS_INFO("Moved");
+ //   ROS_INFO("Moved");
 
     // Move forward.
     return move_cmd(3 * step, 0);   
@@ -287,7 +287,7 @@ void posCallback(const nav_msgs::Odometry::ConstPtr& odom)
   double zangle = atan2((2*q0*q3),(1-2*q3*q3));
 
   curr_pose.set(odom->pose.pose.position.x, odom->pose.pose.position.y, zangle);
-  ROS_INFO("curr: (%f, %f, %f)", curr_pose.x, curr_pose.y, curr_pose.ang);
+  //ROS_INFO("curr: (%f, %f, %f)", curr_pose.x, curr_pose.y, curr_pose.ang);
 }
 
 // ----------- FUNCTIONS --------------------
@@ -305,13 +305,16 @@ void init() {
   else if (GOAL_TYPE == 3) 
     goal_pose.set(-3, -3, 0);
   else if (GOAL_TYPE == 4) 
-    goal_pose.set(-3, 3, 0);
+    goal_pose.set(-2, 2, 0);
   else
     goal_pose.set(0, 0, 0);
 
   goal_poses.push_back(goal_pose);
+  printPose(goal_pose, "Goal Position");
+    ROS_INFO("(((((((((( SCAN ))))))))))");
+
  // setMAngle();
-  ROS_INFO("Mangle: %f", MAngle);
+ // ROS_INFO("Mangle: %f", MAngle);
 }
 
 void switchToBF() {
@@ -320,15 +323,23 @@ void switchToBF() {
   BF_init_pose.set(curr_pose);
   BF_minRadius = distanceToGoal(BF_init_pose, 0);
   BF_began = false;
+  ROS_INFO(" ");
+  ROS_INFO("## ## ## ## ## ## BF ## ## ## ## ## ##");
+  ROS_INFO("Follow Direction: %f", goal_poses.back().ang);
 }
 
 void switchToMTG() {
  // setMAngle();
+  ROS_INFO(" ");
+  ROS_INFO("<><><><><><><><> MTG <><><><><><><><>");
+  printPose(goal_poses.back(), "Current Goal");
   mode = 0;
 }
 
 void switchToSCAN() {
   mode = -1;
+  ROS_INFO(" ");
+  ROS_INFO("(((((((((( SCAN ))))))))))");
 }
 
 geometry_msgs::Twist move_cmd(double forward_move, double turn_move) {
@@ -347,7 +358,7 @@ double scan_center_avg(int num) {
 }
 
 bool detectCollision() {
-  double detectionRange = PI/6;
+  double detectionRange = angle_incr;
   int indexRange = (int) (detectionRange/angle_incr);
   int range_idx = std::min_element(range.begin() + range_size/2 - indexRange/2, 
                                   range.begin() + range_size/2 + indexRange/2) - range.begin();
@@ -405,7 +416,7 @@ double distanceToGoal(pose2D pose, int goalType) {
     tempPose = goal_pose;
   else
     tempPose = goal_poses.back();
-  ROS_INFO("dist2goal: %f", pose.vec_distance(tempPose));
+  //ROS_INFO("dist2goal: %f", pose.vec_distance(tempPose));
   return pose.vec_distance(tempPose);
 }
 
